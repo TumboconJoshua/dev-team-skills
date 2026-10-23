@@ -1,117 +1,126 @@
-# Implementation Plan: Solo-Dev "Software Company" Workflow for Antigravity
+# Implementation Plan: Antigravity Development Team
 
 ## Goal
 
-Turn Antigravity into a small virtual dev shop: one human (you) orchestrating six
-specialist agent roles — Software Engineer, Full Stack Developer, Backend Specialist,
-UI/UX Designer, QA Tester, and Penetration Tester — that hand work to each other
-through defined artifacts instead of you re-explaining context every time.
+Provide a small, auditable delivery team for a solo operator without pretending
+that role separation replaces human authority. The package is installed as one
+project-scoped unit and uses Agent Skills for both specialist work and orchestration.
 
-This uses three Antigravity primitives together:
+## Architecture decisions
 
-| Primitive | Role in this system |
-|---|---|
-| `AGENTS.md` | Project-root file defining the team roster, when each role is invoked, and the handoff order. Antigravity reads this at session start. |
-| `SKILL.md` (per role, `.agents/skills/<role>/SKILL.md`) | Loaded on-demand when a request semantically matches its `description`. Contains the role's responsibilities, checklists, and output format. |
-| `.agents/workflows/*.md` | Optional named macro-commands that chain roles in a fixed order for repeatable pipelines (e.g. "ship a feature"). |
+### ADR-001: Agent Skills only
 
-## Folder layout (drop this at your project root)
+The end-to-end pipeline is a standard skill at
+`.agents/skills/feature-pipeline/SKILL.md`. Legacy `.agents/workflows/` files are
+not supported. This keeps discovery, slash invocation, and progressive loading on
+the current Agent Skills model.
 
-```
-your-project/
-├── AGENTS.md
-└── .agents/
-    ├── skills/
-    │   ├── software-engineer/SKILL.md
-    │   ├── full-stack-developer/SKILL.md
-    │   ├── backend-specialist/SKILL.md
-    │   ├── ui-ux-designer/SKILL.md
-    │   ├── qa-tester/SKILL.md
-    │   └── penetration-tester/SKILL.md
-    ├── workflows/
-    │   └── feature-pipeline.md
-    └── references/
-        └── handoff-template.md
-```
+### ADR-002: Atomic project installation
 
-Skills placed under `.agents/skills/` are **project-scoped** — they only apply to this
-repo. If you want a role available across every repo you touch (e.g. you always want
-a penetration-tester skill on hand), copy that one folder into the **global** scope
-instead: `~/.gemini/config/skills/<role>/`. Everything else about the file is identical.
+Install `AGENTS.md` and the complete `.agents/` tree together. The roles share
+`.agents/GUARDRAILS.md` and `.agents/references/handoff-template.md`; individual
+global copying is intentionally unsupported.
 
-## Phased rollout
+### ADR-003: One state machine
 
-### Phase 1 — Scaffold (today)
-1. Copy the folder structure above into your project.
-2. Commit `AGENTS.md`, `.agents/skills/`, `.agents/workflows/`, `.agents/references/`
-   to version control — these are project config, not personal preference, so the
-   team (even a future teammate) inherits the same pipeline.
-3. Open the project in Antigravity and confirm it lists all six skills in Agent
-   Manager (name + description only — bodies aren't loaded yet).
+Every role emits exactly one workflow status:
 
-### Phase 2 — Smoke test each role in isolation
-For each role, give a small, unambiguous request that should trigger only that skill
-(e.g. "review this endpoint for SQL injection risk" → penetration-tester). Confirm:
-- The correct skill loads (check Agent Manager's "skills equipped" indicator).
-- The output matches the format defined in that SKILL.md.
-- It does **not** silently do another role's job (e.g. QA Tester shouldn't also
-  redesign the API — it should flag the issue and hand back).
+- `ready-for-next-stage`
+- `blocked`
+- `needs-human-decision`
 
-### Phase 3 — Wire the handoff chain
-1. Read `.agents/references/handoff-template.md` — this is the artifact format every
-   role uses to pass work downstream (context, deliverable, open questions, acceptance
-   criteria). Consistent handoffs are what make this feel like a real team instead of
-   six disconnected prompts.
-2. Run the `feature-pipeline` workflow (`.agents/workflows/feature-pipeline.md`) on
-   one real, small feature end to end: Software Engineer (scope) → UI/UX Designer
-   (if user-facing) → Full Stack Developer or Backend Specialist (build) → QA Tester
-   (verify) → Penetration Tester (security gate before merge).
-3. Where a handoff breaks (agent asks for context that was actually produced two
-   steps earlier, or ignores acceptance criteria), fix the *producing* role's output
-   format, not the consuming role's prompt — the artifact should be self-contained.
+PASS/FAIL results and security dispositions are evidence, not extra workflow states.
+Blocked and human-decision states halt orchestration.
 
-### Phase 4 — Add guardrails
-Create `.agents/GUARDRAILS.md` (referenced by all six skills) documenting failure
-patterns you actually hit: e.g. "Backend Specialist keeps proposing a new ORM instead
-of using the existing one — reject and point back to `references/handoff-template.md`
-acceptance criteria." Antigravity agents read this when they loop or stall, so treat
-it as a living document, not a one-time file.
+### ADR-004: Risk-based gates
 
-### Phase 5 — Tune triggering
-Skills under-trigger more often than they over-trigger. If a role isn't loading when
-it should, sharpen its `description` field (that's the *only* text the router sees
-before deciding to load the skill) — add the specific phrases you actually used that
-failed to trigger it, e.g. "...also use when the user says 'is this endpoint safe' or
-'check for vulnerabilities', not just 'penetration test'."
+QA and authorized security review are mandatory for production-bound code and
+configuration. Elevated changes also require threat modeling before implementation.
+Low-risk work receives a focused security review rather than skipping the gate.
 
-### Phase 6 — Parallelize (optional, once the sequential pipeline is solid)
-Antigravity supports concurrent agents on isolated workspace scopes (`@workspace_scope`).
-Once handoffs are reliable, split independent workstreams — e.g. Full Stack Developer
-on the feature branch while QA Tester writes tests against the previous stable branch —
-and merge yourself. Don't parallelize before the sequential version works; concurrent
-agents make broken handoffs much harder to debug.
+Elevated surfaces include authentication, authorization, sessions, payments,
+secrets, PII or regulated data, uploads, dependency and CI trust, infrastructure
+security, and new or materially changed public endpoints.
 
-## Division of responsibility (avoiding role overlap)
+### ADR-005: Human-controlled side effects
 
-| Role | Owns | Does NOT own |
+The agent team can analyze, design, implement, and verify within the approved
+workspace. Deployment, publishing, destructive operations, external communications,
+access-control changes, and risk acceptance require human authorization.
+
+### ADR-006: Stack discovery over framework assumptions
+
+Each implementation role inspects manifests, lockfiles, CI, commands, tests, and
+existing patterns before acting. Named frameworks and tools are examples. The target
+project remains the source of truth.
+
+## Role ownership
+
+| Role | Owns | Does not own |
 |---|---|---|
-| Software Engineer | Scoping, architecture decisions, task breakdown, code review across the whole codebase | Hands-on feature implementation (delegates to Full Stack / Backend), pixel-level UI |
-| Full Stack Developer | End-to-end feature implementation (UI + API + integration) for small/medium features | Deep backend infra (delegates to Backend Specialist), original visual design |
-| Backend Specialist | Data models, APIs, performance, infra, third-party integrations | Frontend components, visual/UX decisions |
-| UI/UX Designer | User flows, wireframes, component specs, accessibility, design tokens | Backend logic, database schema, security testing |
-| QA Tester | Test plans, functional/regression/E2E test authoring, bug reports with repro steps | Fixing the bugs themselves, security-specific exploitation |
-| Penetration Tester | Vulnerability assessment, exploit verification, security sign-off before release | Feature correctness testing (that's QA), fixing vulnerabilities (reports back to whoever owns that code) |
+| Software Engineer | Scope, architecture, risk, acceptance criteria, task routing | Non-trivial implementation |
+| UI/UX Designer | User flows, applicable UI states, WCAG 2.2 AA specs | Production code or backend design |
+| Full Stack Developer | Small-to-medium UI/API implementation | Deep infrastructure or independent visual direction |
+| Backend Specialist | Data, APIs, migrations, jobs, integrations, operations | Frontend presentation |
+| QA Tester | Risk-based verification, evidence, reproducible defects | Production fixes or risk acceptance |
+| Penetration Tester | Authorized threat-informed security verification | Feature correctness or self-remediation |
+| Human operator | Material decisions, approvals, accepted risk, release | None delegated by default |
 
-Every role's SKILL.md ends with a **"Hand off to"** section pointing at the next role
-and the exact artifact to produce — this is what prevents scope creep between agents.
+## Pipeline
 
-## What's in this package
+1. **Scope:** define outcome, non-goals, risk, criteria, and owner.
+2. **Design:** run only for changed user-facing behavior.
+3. **Build:** use Full Stack Developer or Backend Specialist ownership.
+4. **Verify:** map every criterion to evidence and relevant regression checks.
+5. **Security:** run for every production-bound change with depth proportionate to
+   risk, and close every finding by fix, evidence-backed not-applicable disposition,
+   or human risk acceptance.
+6. **Release:** human reviews evidence, rollback plan, and remaining accepted risk.
 
-- `AGENTS.md` — team roster + pipeline order Antigravity reads at session start.
-- `.agents/skills/*/SKILL.md` — the six role definitions.
-- `.agents/workflows/feature-pipeline.md` — example chained workflow.
-- `.agents/references/handoff-template.md` — shared artifact format.
+A rejected handoff returns to its owner. The same blocking reason gets a maximum of
+two implementation attempts; a second failure becomes `needs-human-decision`.
 
-Next step after reviewing: adjust the checklists in each SKILL.md to match your
-actual stack (the drafts assume a generic web app — swap in your real frameworks,
-CI system, and security tooling).
+## Handoff requirements
+
+The shared template records:
+
+- source and next role;
+- status, risk, attempt, and run identifier;
+- measurable acceptance criteria and outcomes;
+- exact commands, exit codes, environment, and sanitized evidence;
+- threat-model, security-review, rollback, and release requirements;
+- stable findings and their dispositions;
+- unresolved decisions and next action.
+
+Optional evidence is local under `.agents/runs/` and ignored by default. Never store
+secrets, session tokens, raw PII, or full production payloads.
+
+## Validation
+
+`scripts/validate_skills.py` is a standard-library check run locally and in GitHub
+Actions. It verifies:
+
+- skill frontmatter, names, uniqueness, and description limits;
+- required shared files and internal Markdown links;
+- removal of legacy workflows;
+- canonical statuses and the retry ceiling;
+- absence of obsolete problem-details guidance;
+- positive and negative routing fixtures for every skill;
+- workflow fixtures for success, failure, security blocking, escalation, and approval.
+
+Static checks do not prove semantic routing. After changing descriptions, manually
+smoke-test representative prompts in Antigravity.
+
+## Release checklist
+
+1. Run `python -B scripts/validate_skills.py`.
+2. Review `git diff --check` and the complete diff.
+3. Confirm no run artifacts, credentials, or personal data are staged.
+4. Smoke-test skill discovery and the `feature-pipeline` invocation in Antigravity.
+5. Record any unrun checks or accepted risks before release.
+
+## Deferred human decisions
+
+- Choose and add a repository license before public reuse.
+- Add semantic release/version metadata when the package has a release process.
+- Pin or replace platform-specific guidance only after observing real project usage.

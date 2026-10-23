@@ -1,0 +1,4 @@
+# Local agent-run evidence
+.agents/runs/
+__pycache__/
+*.py[cod]

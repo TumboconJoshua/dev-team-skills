@@ -1,0 +1,151 @@
+{
+  "version": 1,
+  "routing_cases": [
+    {
+      "id": "software-engineer-positive",
+      "prompt": "Scope this new notification feature and decide which roles should implement it.",
+      "target_skill": "software-engineer",
+      "should_match": true
+    },
+    {
+      "id": "software-engineer-negative",
+      "prompt": "Run the existing regression suite and report any failures.",
+      "target_skill": "software-engineer",
+      "should_match": false
+    },
+    {
+      "id": "ui-ux-designer-positive",
+      "prompt": "Design the states, keyboard behavior, and responsive layout for this checkout form.",
+      "target_skill": "ui-ux-designer",
+      "should_match": true
+    },
+    {
+      "id": "ui-ux-designer-negative",
+      "prompt": "Add a database index for the slow order lookup.",
+      "target_skill": "ui-ux-designer",
+      "should_match": false
+    },
+    {
+      "id": "full-stack-developer-positive",
+      "prompt": "Implement the account settings page and wire it to a new update endpoint.",
+      "target_skill": "full-stack-developer",
+      "should_match": true
+    },
+    {
+      "id": "full-stack-developer-negative",
+      "prompt": "Review this authentication flow for privilege escalation vulnerabilities.",
+      "target_skill": "full-stack-developer",
+      "should_match": false
+    },
+    {
+      "id": "backend-specialist-positive",
+      "prompt": "Design the migration and API contract for storing webhook delivery attempts.",
+      "target_skill": "backend-specialist",
+      "should_match": true
+    },
+    {
+      "id": "backend-specialist-negative",
+      "prompt": "Create a wireframe for the mobile navigation menu.",
+      "target_skill": "backend-specialist",
+      "should_match": false
+    },
+    {
+      "id": "qa-tester-positive",
+      "prompt": "Test the completed import flow against its acceptance criteria and regressions.",
+      "target_skill": "qa-tester",
+      "should_match": true
+    },
+    {
+      "id": "qa-tester-negative",
+      "prompt": "Exploit the public upload endpoint and issue a security sign-off.",
+      "target_skill": "qa-tester",
+      "should_match": false
+    },
+    {
+      "id": "penetration-tester-positive",
+      "prompt": "Assess this new session endpoint for authorization bypasses before release.",
+      "target_skill": "penetration-tester",
+      "should_match": true
+    },
+    {
+      "id": "penetration-tester-negative",
+      "prompt": "Implement the API and user interface for editing a profile.",
+      "target_skill": "penetration-tester",
+      "should_match": false
+    },
+    {
+      "id": "feature-pipeline-positive",
+      "prompt": "Run the feature pipeline for a production-bound password reset change.",
+      "target_skill": "feature-pipeline",
+      "should_match": true
+    },
+    {
+      "id": "feature-pipeline-negative",
+      "prompt": "Explain what this single configuration option means without changing files.",
+      "target_skill": "feature-pipeline",
+      "should_match": false
+    }
+  ],
+  "workflow_cases": [
+    {
+      "id": "scope-complete",
+      "stage": "software-engineer",
+      "outcome": "acceptance criteria and owner are defined",
+      "attempt": 0,
+      "expected_status": "ready-for-next-stage",
+      "expected_next_role": "ui-ux-designer"
+    },
+    {
+      "id": "qa-pass-security-required",
+      "stage": "qa-tester",
+      "outcome": "all criteria pass and the change touches authentication",
+      "condition": "production-bound-elevated-risk",
+      "attempt": 1,
+      "expected_status": "ready-for-next-stage",
+      "expected_next_role": "penetration-tester"
+    },
+    {
+      "id": "qa-pass-low-risk-security-review",
+      "stage": "qa-tester",
+      "outcome": "all criteria pass for a low-risk production-bound configuration change",
+      "condition": "production-bound-low-risk",
+      "attempt": 1,
+      "expected_status": "ready-for-next-stage",
+      "expected_next_role": "penetration-tester"
+    },
+    {
+      "id": "qa-first-failure",
+      "stage": "qa-tester",
+      "outcome": "a release-blocking regression is reproducible",
+      "attempt": 1,
+      "expected_status": "blocked",
+      "expected_next_role": "implementing-role"
+    },
+    {
+      "id": "qa-second-failure-escalates",
+      "stage": "qa-tester",
+      "outcome": "the same handoff is rejected after the second implementation attempt",
+      "attempt": 2,
+      "expected_status": "needs-human-decision",
+      "expected_next_role": "human-operator"
+    },
+    {
+      "id": "security-blocks-release",
+      "stage": "penetration-tester",
+      "outcome": "an unresolved release-blocking vulnerability remains",
+      "condition": "unresolved-security-finding",
+      "attempt": 1,
+      "expected_status": "blocked",
+      "expected_next_role": "implementing-role"
+    },
+    {
+      "id": "external-action-needs-approval",
+      "stage": "feature-pipeline",
+      "outcome": "deployment or another external write requires operator approval",
+      "condition": "external-write",
+      "attempt": 0,
+      "expected_status": "needs-human-decision",
+      "expected_next_role": "human-operator"
+    }
+  ]
+}
