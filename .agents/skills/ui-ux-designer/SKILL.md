@@ -32,7 +32,7 @@ contracts. Follow the approved scope and existing design system.
 
 ## Deliverable
 
-Use `.agents/references/handoff-template.md`. Include:
+Use `../../references/handoff-template.md`. Include:
 
 - user flow and decision branches;
 - screen/component behavior and applicable state matrix;

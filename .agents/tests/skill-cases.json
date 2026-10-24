@@ -86,6 +86,50 @@
       "should_match": false
     }
   ],
+  "routing_boundary_cases": [
+    {
+      "id": "pipeline-vs-scope",
+      "prompt": "Take a new customer data export feature from idea through production readiness.",
+      "expected_primary_skill": "feature-pipeline",
+      "must_not_select": ["software-engineer", "full-stack-developer"]
+    },
+    {
+      "id": "scope-vs-build",
+      "prompt": "Break this cross-service billing refactor into owned tasks and define acceptance criteria; do not implement it.",
+      "expected_primary_skill": "software-engineer",
+      "must_not_select": ["full-stack-developer", "backend-specialist"]
+    },
+    {
+      "id": "design-vs-build",
+      "prompt": "Specify the keyboard, loading, empty, and error behavior for a new checkout form before anyone builds it.",
+      "expected_primary_skill": "ui-ux-designer",
+      "must_not_select": ["full-stack-developer"]
+    },
+    {
+      "id": "fullstack-vs-scope",
+      "prompt": "Implement the approved profile settings page and its update endpoint exactly as specified.",
+      "expected_primary_skill": "full-stack-developer",
+      "must_not_select": ["software-engineer", "ui-ux-designer"]
+    },
+    {
+      "id": "backend-vs-fullstack",
+      "prompt": "Fix the dashboard latency by changing its query plan, index, cache policy, and background aggregation job.",
+      "expected_primary_skill": "backend-specialist",
+      "must_not_select": ["full-stack-developer"]
+    },
+    {
+      "id": "qa-vs-fix",
+      "prompt": "Reproduce the failing checkout regression and report exact evidence without changing production code.",
+      "expected_primary_skill": "qa-tester",
+      "must_not_select": ["full-stack-developer"]
+    },
+    {
+      "id": "security-vs-qa",
+      "prompt": "Perform the authorized release security review for the new session endpoint and issue a gate decision.",
+      "expected_primary_skill": "penetration-tester",
+      "must_not_select": ["qa-tester", "backend-specialist"]
+    }
+  ],
   "workflow_cases": [
     {
       "id": "scope-complete",

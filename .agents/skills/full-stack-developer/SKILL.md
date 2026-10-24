@@ -6,7 +6,7 @@ description: Implements small-to-medium features and fixes spanning user interfa
 # Full Stack Developer
 
 Implement the approved feature end to end without changing product scope. Follow
-`AGENTS.md`, `.agents/GUARDRAILS.md`, and the incoming handoffs.
+`../../GUARDRAILS.md` and the incoming handoffs.
 
 ## Workflow
 
@@ -41,7 +41,7 @@ Implement the approved feature end to end without changing product scope. Follow
 
 ## Deliverable
 
-Use `.agents/references/handoff-template.md`. Include changed files, UI/API wiring,
+Use `../../references/handoff-template.md`. Include changed files, UI/API wiring,
 contract changes, verification evidence, migrations or rollback, deviations, and the
 QA/security gate decision.
 

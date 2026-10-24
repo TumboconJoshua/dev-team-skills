@@ -8,18 +8,30 @@ project-scoped unit and uses Agent Skills for both specialist work and orchestra
 
 ## Architecture decisions
 
-### ADR-001: Agent Skills only
+### ADR-001: Skills for procedures, custom agents for isolated roles
 
 The end-to-end pipeline is a standard skill at
-`.agents/skills/feature-pipeline/SKILL.md`. Legacy `.agents/workflows/` files are
-not supported. This keeps discovery, slash invocation, and progressive loading on
-the current Agent Skills model.
+`.agents/skills/feature-pipeline/SKILL.md`. Six custom-agent definitions provide
+isolated role contexts and least-privilege tool lists where the target IDE supports
+them. Legacy `.agents/workflows/` files are not supported.
 
 ### ADR-002: Atomic project installation
 
-Install `AGENTS.md` and the complete `.agents/` tree together. The roles share
-`.agents/GUARDRAILS.md` and `.agents/references/handoff-template.md`; individual
-global copying is intentionally unsupported.
+For source-mode development of this repository, keep `AGENTS.md` and the complete
+`.agents/` tree together. Do not copy individual role skills globally because
+they depend on shared guardrails and references.
+
+For target projects, install the generated `plugin/` bundle instead of copying
+repository documentation. The safe installer writes it under
+`.agents/plugins/dev-team-skills/`, rejects links and path escapes, and refuses
+overwrite.
+
+### ADR-002a: Canonical workspace source plus verified plugin mirror
+
+`.agents/skills/`, `.agents/agents/`, and shared references are the editable
+source. `scripts/sync_plugin.py` creates the committed Antigravity plugin mirror.
+Validation fails on missing, stale, or changed mirrored files so the two forms
+cannot silently drift.
 
 ### ADR-003: One state machine
 
@@ -77,6 +89,12 @@ project remains the source of truth.
    or human risk acceptance.
 6. **Release:** human reviews evidence, rollback plan, and remaining accepted risk.
 
+When native custom agents are available, the coordinator delegates each stage to
+the matching definition under `.agents/agents/`. QA and security definitions lack
+editing and command tools; the coordinator executes their approved, non-destructive
+checks and returns exact output for independent assessment. Skill-only execution
+is the compatibility fallback.
+
 A rejected handoff returns to its owner. The same blocking reason gets a maximum of
 two implementation attempts; a second failure becomes `needs-human-decision`.
 
@@ -106,7 +124,10 @@ Actions. It verifies:
 - canonical statuses and the retry ceiling;
 - absence of obsolete problem-details guidance;
 - positive and negative routing fixtures for every skill;
+- ambiguous boundary-routing fixtures and an Antigravity smoke-test checklist;
 - workflow fixtures for success, failure, security blocking, escalation, and approval.
+- plugin schema, native-agent definitions, and byte-for-byte distribution parity.
+- installer traversal, overwrite, symlink, and junction protections.
 
 Static checks do not prove semantic routing. After changing descriptions, manually
 smoke-test representative prompts in Antigravity.
@@ -114,10 +135,12 @@ smoke-test representative prompts in Antigravity.
 ## Release checklist
 
 1. Run `python -B scripts/validate_skills.py`.
-2. Review `git diff --check` and the complete diff.
-3. Confirm no run artifacts, credentials, or personal data are staged.
-4. Smoke-test skill discovery and the `feature-pipeline` invocation in Antigravity.
-5. Record any unrun checks or accepted risks before release.
+2. Run `python -B scripts/sync_plugin.py --check`.
+3. Exercise the installer dry run and refusal-to-overwrite behavior.
+4. Review `git diff --check` and the complete diff.
+5. Confirm no run artifacts, credentials, or personal data are staged.
+6. Run `.agents/tests/antigravity-smoke-tests.md` in the supported IDE release.
+7. Record any unrun checks or accepted risks before release.
 
 ## Deferred human decisions
 

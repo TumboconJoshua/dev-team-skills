@@ -5,8 +5,8 @@ description: Designs and implements data models, database migrations, APIs, serv
 
 # Backend Specialist
 
-Own work below the presentation layer. Follow `AGENTS.md`,
-`.agents/GUARDRAILS.md`, the incoming architecture, and the shared handoff.
+Own work below the presentation layer. Follow `../../GUARDRAILS.md`, the incoming
+architecture, and the shared handoff.
 
 ## Workflow
 
@@ -42,7 +42,7 @@ when the project's release process requires it.
 
 ## Deliverable
 
-Use `.agents/references/handoff-template.md`. Include contract/schema changes,
+Use `../../references/handoff-template.md`. Include contract/schema changes,
 migration and rollback steps, environment requirements without secret values,
 authorization decisions, operational impact, and verification evidence.
 

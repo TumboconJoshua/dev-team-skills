@@ -1,7 +1,8 @@
 # Dev Team Skills for Antigravity
 
-A project-scoped, seven-skill package that gives a solo developer a disciplined
-software delivery team: six specialist roles plus an end-to-end feature pipeline.
+A project-scoped Antigravity plugin that gives a solo developer a disciplined
+software delivery team: six native specialist agents, seven skills, persistent
+safety rules, and an end-to-end feature pipeline.
 
 The package uses current Agent Skills, explicit role handoffs, risk-based QA and
 security gates, and a dependency-free repository validator.
@@ -12,6 +13,7 @@ security gates, and a dependency-free repository validator.
 your-project/
 |-- AGENTS.md
 |-- .agents/
+|   |-- agents/                       # six native custom-agent definitions
 |   |-- GUARDRAILS.md
 |   |-- references/handoff-template.md
 |   |-- skills/
@@ -24,24 +26,51 @@ your-project/
 |   |   `-- feature-pipeline/SKILL.md
 |   `-- tests/skill-cases.json
 |-- scripts/validate_skills.py
+|-- scripts/sync_plugin.py
+|-- scripts/install_plugin.py
+|-- plugin/                           # installable Antigravity plugin mirror
+|   |-- plugin.json
+|   |-- agents/
+|   |-- rules/
+|   |-- references/
+|   `-- skills/
 `-- .github/workflows/validate.yml
 ```
 
-## Install
+## Install in Antigravity IDE
 
-Copy `AGENTS.md`, `README.md`, `IMPLEMENTATION_PLAN.md`, the complete
-`.agents/` directory, and the validation files to the target project root.
-Install the package atomically: roles depend on shared project policy and the
-handoff contract, so copying one role globally is unsupported.
-
-Open the project in Antigravity, confirm seven skills are discoverable, and run:
+Preview a workspace installation:
 
 ```shell
-python scripts/validate_skills.py
+python scripts/install_plugin.py --workspace /path/to/project
 ```
 
-The dependency-free validator checks frontmatter, names, internal links, required
-files, obsolete workflow layout, statuses, retry termination, and fixtures.
+Review the destination, then install:
+
+```shell
+python scripts/install_plugin.py --workspace /path/to/project --apply
+```
+
+The installer writes only
+`<project>/.agents/plugins/dev-team-skills/`, defaults to a dry run, and refuses
+to overwrite an existing installation. It does not replace the target project's
+`README.md`, `AGENTS.md`, or implementation plan.
+
+Refresh the Antigravity Customizations panel, confirm seven skills are active,
+and invoke `/feature-pipeline`. When the IDE build supports plugin custom agents,
+confirm all six roles are also listed.
+
+For repository development, run:
+
+```shell
+python -B scripts/sync_plugin.py
+python -B scripts/validate_skills.py
+```
+
+The dependency-free validator checks frontmatter, names, internal links, custom
+agents, plugin manifest and mirror integrity, rules, statuses, retry termination,
+fixtures, and forbidden filesystem indirection. The installer regression suite
+also covers overwrite, traversal, symlink, and junction boundaries.
 
 ## Use
 
@@ -71,6 +100,12 @@ publishing, destructive operations, and risk acceptance remain human-approved.
 5. Penetration Tester reviews every production-bound change, with depth
    proportionate to risk.
 6. The human operator approves release.
+
+The pipeline delegates stages to native custom agents where supported. Each role
+receives the incoming handoff and relevant paths rather than the full conversation.
+The QA and security agent profiles are read-only; the coordinator runs their
+approved non-destructive commands and returns the evidence for independent review.
+The skill-only fallback preserves the same ownership rules.
 
 Direct, well-scoped work may start at the owning role, but cannot bypass applicable
 QA, security, or human-approval gates.
@@ -117,8 +152,16 @@ and loop termination.
 
 - Update descriptions when real prompts route incorrectly.
 - Add positive and negative cases to `.agents/tests/skill-cases.json`.
+- Run `.agents/tests/antigravity-smoke-tests.md` in the target IDE release.
 - Run the validator before each merge.
 - Smoke-test Antigravity routing after description changes; fixtures cannot prove
   model routing behavior.
+
+## Publishing
+
+`plugin/` is a generated, committed distribution mirror. Edit `.agents/skills/`,
+`.agents/agents/`, or shared references, then run
+`python -B scripts/sync_plugin.py`. CI rejects drift. Publish tagged releases
+only after the local validator and Antigravity smoke tests pass.
 
 See `IMPLEMENTATION_PLAN.md` for architecture and ownership decisions.

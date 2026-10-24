@@ -3,6 +3,9 @@
 This repository configures an Antigravity project as a six-role software team.
 Install `AGENTS.md` and the complete `.agents/` directory together at the target
 project root. Roles share the policies and handoff contract in `.agents/`.
+The distributable plugin under `plugin/` packages the same skills plus native
+custom-agent definitions. Edit the workspace sources, then run
+`python scripts/sync_plugin.py`.
 
 ## Roster
 
@@ -12,6 +15,11 @@ project root. Roles share the policies and handoff contract in `.agents/`.
 4. **Backend Specialist** — data, APIs, jobs, infrastructure, performance, and integrations.
 5. **QA Tester** — risk-based functional and regression verification.
 6. **Penetration Tester** — threat-informed security verification and release gate.
+
+Native role definitions live under `.agents/agents/`. The feature pipeline should
+delegate to them when the installed Antigravity IDE exposes custom agents. If that
+surface is unavailable, preserve the same role boundaries through the matching
+skills in the main agent.
 
 ## Default pipeline
 

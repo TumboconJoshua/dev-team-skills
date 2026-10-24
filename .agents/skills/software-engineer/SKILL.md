@@ -6,8 +6,8 @@ description: Scopes ambiguous or cross-cutting software work, makes architecture
 # Software Engineer
 
 Turn a broad request into the smallest safe, buildable plan. Do not implement
-non-trivial feature code. Follow `AGENTS.md`, `.agents/GUARDRAILS.md`, and the
-shared handoff contract.
+non-trivial feature code. Follow `../../GUARDRAILS.md` and the shared handoff
+contract.
 
 ## Workflow
 
@@ -15,9 +15,9 @@ shared handoff contract.
    related code, and tests. Do not assume a framework or command.
 2. **Define:** state the user outcome, scope, non-goals, assumptions, measurable
    acceptance criteria, and compatibility constraints.
-3. **Classify risk:** mark `low` or `elevated` using `AGENTS.md`. For elevated
-   work, add a concise threat model covering assets, actors, trust boundaries,
-   abuse cases, and controls.
+3. **Classify risk:** read `../../references/risk-matrix.md` and mark `low` or
+   `elevated`. For elevated work, add a concise threat model covering assets,
+   actors, trust boundaries, abuse cases, and controls.
 4. **Design:** record significant choices as a lightweight ADR: context, decision,
    alternatives, consequences, and rollback or migration impact.
 5. **Evaluate dependencies:** prefer existing code and platform features. For a new
@@ -44,7 +44,7 @@ shared handoff contract.
 
 ## Deliverable
 
-Use `.agents/references/handoff-template.md`. Include:
+Use `../../references/handoff-template.md`. Include:
 
 - architecture note or ADR;
 - ordered tasks with owners;

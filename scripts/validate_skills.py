@@ -12,6 +12,8 @@ from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS_DIR = ROOT / ".agents" / "skills"
+AGENTS_DIR = ROOT / ".agents" / "agents"
+PLUGIN_DIR = ROOT / "plugin"
 FIXTURES = ROOT / ".agents" / "tests" / "skill-cases.json"
 CANONICAL_STATUSES = {
     "ready-for-next-stage",
@@ -24,8 +26,15 @@ REQUIRED_FILES = (
     "README.md",
     "IMPLEMENTATION_PLAN.md",
     ".agents/references/handoff-template.md",
+    ".agents/references/risk-matrix.md",
     ".agents/skills/feature-pipeline/SKILL.md",
     ".agents/tests/skill-cases.json",
+    ".agents/tests/antigravity-smoke-tests.md",
+    "plugin/plugin.json",
+    "plugin/rules/team-policy.md",
+    "scripts/install_plugin.py",
+    "scripts/test_install_plugin.py",
+    "scripts/sync_plugin.py",
 )
 
 
@@ -180,6 +189,161 @@ def validate_repository_rules(errors: list[str]) -> None:
                     )
 
 
+def validate_plugin(errors: list[str], skill_names: set[str]) -> None:
+    def is_link_or_junction(path: Path) -> bool:
+        return path.is_symlink() or (
+            hasattr(path, "is_junction") and path.is_junction()
+        )
+
+    for directory in (
+        SKILLS_DIR,
+        AGENTS_DIR,
+        ROOT / ".agents" / "references",
+        PLUGIN_DIR,
+    ):
+        if directory.exists():
+            try:
+                directory.resolve().relative_to(ROOT)
+            except ValueError:
+                errors.append(
+                    f"{directory.relative_to(ROOT)}: resolves outside repository"
+                )
+            for path in (directory, *directory.rglob("*")):
+                if is_link_or_junction(path):
+                    errors.append(
+                        f"{path.relative_to(ROOT)}: links and junctions are forbidden"
+                    )
+                try:
+                    path.resolve().relative_to(directory.resolve())
+                except ValueError:
+                    errors.append(
+                        f"{path.relative_to(ROOT)}: resolves outside its designated root"
+                    )
+
+    manifest = PLUGIN_DIR / "plugin.json"
+    if manifest.is_file():
+        try:
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as exc:
+            errors.append(f"{manifest.relative_to(ROOT)}: invalid JSON: {exc}")
+        else:
+            expected_keys = {"$schema", "name", "description"}
+            if set(data) != expected_keys:
+                errors.append(
+                    f"{manifest.relative_to(ROOT)}: fields must be "
+                    f"{', '.join(sorted(expected_keys))}"
+                )
+            if data.get("$schema") != "https://antigravity.google/schemas/v1/plugin.json":
+                errors.append(f"{manifest.relative_to(ROOT)}: use the official schema URL")
+            if data.get("name") != "dev-team-skills":
+                errors.append(f"{manifest.relative_to(ROOT)}: name must be 'dev-team-skills'")
+            if not isinstance(data.get("description"), str) or not data["description"].strip():
+                errors.append(f"{manifest.relative_to(ROOT)}: description must be non-empty")
+
+    mirrors = (
+        (SKILLS_DIR, PLUGIN_DIR / "skills"),
+        (AGENTS_DIR, PLUGIN_DIR / "agents"),
+        (ROOT / ".agents" / "references", PLUGIN_DIR / "references"),
+    )
+    for source, destination in mirrors:
+        expected = {
+            path.relative_to(source)
+            for path in source.rglob("*")
+            if path.is_file()
+        }
+        actual = (
+            {
+                path.relative_to(destination)
+                for path in destination.rglob("*")
+                if path.is_file()
+            }
+            if destination.is_dir()
+            else set()
+        )
+        for relative in sorted(expected - actual):
+            errors.append(f"{destination.relative_to(ROOT) / relative}: missing mirror")
+        for relative in sorted(actual - expected):
+            errors.append(f"{destination.relative_to(ROOT) / relative}: stale mirror")
+        for relative in sorted(expected & actual):
+            if (source / relative).read_bytes() != (destination / relative).read_bytes():
+                errors.append(f"{destination.relative_to(ROOT) / relative}: mirror drift")
+
+    guardrails = ROOT / ".agents" / "GUARDRAILS.md"
+    plugin_guardrails = PLUGIN_DIR / "GUARDRAILS.md"
+    if guardrails.is_file() and plugin_guardrails.is_file():
+        if guardrails.read_bytes() != plugin_guardrails.read_bytes():
+            errors.append(f"{plugin_guardrails.relative_to(ROOT)}: mirror drift")
+    elif guardrails.is_file():
+        errors.append(f"{plugin_guardrails.relative_to(ROOT)}: missing mirror")
+
+    role_names = skill_names - {"feature-pipeline"}
+    agent_files = {path.stem: path for path in AGENTS_DIR.glob("*.md")}
+    if set(agent_files) != role_names:
+        missing = sorted(role_names - set(agent_files))
+        extra = sorted(set(agent_files) - role_names)
+        if missing:
+            errors.append(f".agents/agents: missing role agents {', '.join(missing)}")
+        if extra:
+            errors.append(f".agents/agents: unexpected agents {', '.join(extra)}")
+    for name, path in sorted(agent_files.items()):
+        try:
+            metadata = parse_frontmatter(path)
+        except ValueError as exc:
+            errors.append(f"{path.relative_to(ROOT)}: {exc}")
+            continue
+        text = path.read_text(encoding="utf-8")
+        if metadata.get("name") != name:
+            errors.append(f"{path.relative_to(ROOT)}: name must match filename")
+        if not metadata.get("description"):
+            errors.append(f"{path.relative_to(ROOT)}: description must be non-empty")
+        if not re.search(r"^mainAgent:\s*false\s*$", text, re.MULTILINE):
+            errors.append(f"{path.relative_to(ROOT)}: mainAgent must be false")
+        if not re.search(r"^subagent:\s*true\s*$", text, re.MULTILINE):
+            errors.append(f"{path.relative_to(ROOT)}: subagent must be true")
+        tools_match = re.search(
+            r"^tools:\s*\n((?:\s+-\s+[a-z_]+\s*\n)+)",
+            text,
+            re.MULTILINE,
+        )
+        if not tools_match:
+            errors.append(f"{path.relative_to(ROOT)}: tools must be an explicit list")
+        else:
+            tools = set(re.findall(r"-\s+([a-z_]+)", tools_match.group(1)))
+            allowed = {
+                "view_file",
+                "grep_search",
+                "replace_file_content",
+                "run_command",
+                "manage_task",
+            }
+            unknown = sorted(tools - allowed)
+            if unknown:
+                errors.append(f"{path.relative_to(ROOT)}: unknown tools {', '.join(unknown)}")
+            if name in {"software-engineer", "qa-tester", "penetration-tester"}:
+                if "replace_file_content" in tools:
+                    errors.append(f"{path.relative_to(ROOT)}: review role cannot edit files")
+            if name in {"qa-tester", "penetration-tester"}:
+                if "run_command" in tools:
+                    errors.append(
+                        f"{path.relative_to(ROOT)}: independent reviewer cannot run commands"
+                    )
+            if name in {"full-stack-developer", "backend-specialist"}:
+                if "replace_file_content" not in tools:
+                    errors.append(f"{path.relative_to(ROOT)}: implementation role needs edit access")
+
+    policy = PLUGIN_DIR / "rules" / "team-policy.md"
+    if policy.is_file():
+        try:
+            metadata = parse_frontmatter(policy)
+        except ValueError as exc:
+            errors.append(f"{policy.relative_to(ROOT)}: {exc}")
+        else:
+            if metadata.get("trigger") != "always_on":
+                errors.append(f"{policy.relative_to(ROOT)}: trigger must be always_on")
+            if not metadata.get("description"):
+                errors.append(f"{policy.relative_to(ROOT)}: description must be non-empty")
+
+
 def validate_fixtures(errors: list[str], skill_names: set[str]) -> None:
     if not FIXTURES.is_file():
         return
@@ -192,6 +356,7 @@ def validate_fixtures(errors: list[str], skill_names: set[str]) -> None:
     if data.get("version") != 1:
         errors.append(f"{FIXTURES.relative_to(ROOT)}: version must be 1")
     routing = data.get("routing_cases")
+    boundaries = data.get("routing_boundary_cases")
     workflows = data.get("workflow_cases")
     if not isinstance(routing, list) or not routing:
         errors.append(f"{FIXTURES.relative_to(ROOT)}: routing_cases must be a non-empty list")
@@ -199,6 +364,11 @@ def validate_fixtures(errors: list[str], skill_names: set[str]) -> None:
     if not isinstance(workflows, list) or not workflows:
         errors.append(f"{FIXTURES.relative_to(ROOT)}: workflow_cases must be a non-empty list")
         workflows = []
+    if not isinstance(boundaries, list) or not boundaries:
+        errors.append(
+            f"{FIXTURES.relative_to(ROOT)}: routing_boundary_cases must be a non-empty list"
+        )
+        boundaries = []
 
     ids: set[str] = set()
     coverage = {name: {True: False, False: False} for name in skill_names}
@@ -225,6 +395,40 @@ def validate_fixtures(errors: list[str], skill_names: set[str]) -> None:
     for skill, kinds in sorted(coverage.items()):
         if not kinds[True] or not kinds[False]:
             errors.append(f"routing_cases: {skill!r} needs positive and negative cases")
+
+    boundary_coverage: set[str] = set()
+    for index, case in enumerate(boundaries):
+        location = f"routing_boundary_cases[{index}]"
+        required = {"id", "prompt", "expected_primary_skill", "must_not_select"}
+        missing = required - case.keys() if isinstance(case, dict) else required
+        if missing:
+            errors.append(f"{location}: missing {', '.join(sorted(missing))}")
+            continue
+        if case["id"] in ids:
+            errors.append(f"{location}: duplicate id {case['id']!r}")
+        ids.add(case["id"])
+        expected = case["expected_primary_skill"]
+        excluded = case["must_not_select"]
+        if expected not in skill_names:
+            errors.append(f"{location}: unknown expected_primary_skill {expected!r}")
+        else:
+            boundary_coverage.add(expected)
+        if not isinstance(case["prompt"], str) or not case["prompt"].strip():
+            errors.append(f"{location}: prompt must be a non-empty string")
+        if not isinstance(excluded, list) or not excluded:
+            errors.append(f"{location}: must_not_select must be a non-empty list")
+        else:
+            unknown = [name for name in excluded if name not in skill_names]
+            if unknown:
+                errors.append(f"{location}: unknown excluded skills {unknown!r}")
+            if expected in excluded:
+                errors.append(f"{location}: expected skill cannot be excluded")
+    uncovered = sorted(skill_names - boundary_coverage)
+    if boundaries and uncovered:
+        errors.append(
+            "routing_boundary_cases: missing expected-primary coverage for "
+            + ", ".join(uncovered)
+        )
 
     saw_retry_ceiling = False
     observed_workflows: dict[str, dict[str, object]] = {}
@@ -307,6 +511,7 @@ def main() -> int:
     skill_names = validate_skills(errors)
     validate_markdown_links(errors)
     validate_repository_rules(errors)
+    validate_plugin(errors, skill_names)
     validate_fixtures(errors, skill_names)
     if errors:
         print(f"Validation failed with {len(errors)} error(s):", file=sys.stderr)

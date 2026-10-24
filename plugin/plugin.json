@@ -1,0 +1,5 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "dev-team-skills",
+  "description": "A guarded six-role software delivery team with an end-to-end feature pipeline for Antigravity."
+}

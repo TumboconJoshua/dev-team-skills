@@ -20,3 +20,9 @@ jobs:
           python-version: "3.12"
       - name: Validate skills and fixtures
         run: python scripts/validate_skills.py
+      - name: Verify plugin mirror
+        run: python scripts/sync_plugin.py --check
+      - name: Verify safe installer dry run
+        run: python scripts/install_plugin.py --workspace .
+      - name: Test installer filesystem boundaries
+        run: python scripts/test_install_plugin.py

@@ -50,7 +50,7 @@ security/product requirements.
 
 ## Deliverable
 
-Use `.agents/references/handoff-template.md`. Include authorized scope, threat
+Use `../../references/handoff-template.md`. Include authorized scope, threat
 model coverage, tools and methods, findings and dispositions, dependency/configuration
 status, evidence, untested surfaces, and the security gate decision.
 

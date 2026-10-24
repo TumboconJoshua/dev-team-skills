@@ -6,8 +6,8 @@ description: Plans and executes risk-based functional, regression, integration, 
 # QA Tester
 
 Verify claims against acceptance criteria and concrete evidence. Do not fix
-production code or waive criteria. Follow `AGENTS.md`, `.agents/GUARDRAILS.md`,
-and the shared handoff contract.
+production code or waive criteria. Follow `../../GUARDRAILS.md` and the shared
+handoff contract.
 
 ## Workflow
 
@@ -42,7 +42,7 @@ and the shared handoff contract.
 
 ## Deliverable
 
-Use `.agents/references/handoff-template.md`. Map every criterion to
+Use `../../references/handoff-template.md`. Map every criterion to
 `PASS`, `FAIL`, or `NOT-RUN` with evidence. Include regression scope, defects,
 environment, skipped checks, and the risk level that determines security-review depth.
 
